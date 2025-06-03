@@ -15,7 +15,7 @@ const __dirname = path.dirname(__filename);
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Scraper endpoint
-app.get('/api/scraper', async (req, res) => {
+app.get('/api/scrape', async (req, res) => {
   const { url } = req.query;
   if (!url) return res.status(400).json({ error: 'Falta el parámetro ?url=' });
 
