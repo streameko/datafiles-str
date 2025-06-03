@@ -1,25 +1,22 @@
-export const config = {
-  runtime: 'edge',
-};
+import { load } from 'cheerio';
 
-export default async function handler(req) {
-  const { searchParams } = new URL(req.url);
-  const url = searchParams.get('url');
+export default async function handler(req, res) {
+  const { url } = req.query;
 
-  if (!url || (!url.includes('richardsignfish.com') && !url.includes('cybervynx.com'))) {
-    return new Response(JSON.stringify({ error: 'URL inválida' }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' },
-    });
+  if (!url) {
+    return res.status(400).json({ error: 'Falta el parámetro ?url=' });
   }
 
-  const res = await fetch(url);
-  const html = await res.text();
+  try {
+    const response = await fetch(url);
+    const html = await response.text();
+    const $ = load(html);
 
-  const match = html.match(/<iframe[^>]+src=["']([^"']+)["']/i);
-  const embedUrl = match ? match[1] : null;
+    // Buscar iframe dentro del HTML
+    const iframe = $('iframe').attr('src') || null;
 
-  return new Response(JSON.stringify({ embedUrl }), {
-    headers: { 'Content-Type': 'application/json' },
-  });
+    return res.status(200).json({ iframe });
+  } catch (err) {
+    return res.status(500).json({ error: 'Falló el scraping', detalle: err.message });
+  }
 }
