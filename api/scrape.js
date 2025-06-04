@@ -13,10 +13,18 @@ export default async function handler(req, res) {
     const html = await response.text();
     const $ = load(html);
 
-    // Buscar iframe dentro del HTML
-    const iframe = $('iframe').attr('src') || null;
+    const iframes = [];
+    $('iframe').each((_, el) => {
+      const src = $(el).attr('src');
+      if (src) iframes.push(src);
+    });
 
-    return res.status(200).json({ iframe });
+    if (iframes.length === 0) {
+      return res.status(200).json({ iframe: null, mensaje: 'No se encontró ningún iframe' });
+    }
+
+    // Regresa el primero como antes, pero mostrando todos si lo necesitas
+    return res.status(200).json({ iframe: iframes[0], encontrados: iframes });
   } catch (err) {
     return res.status(500).json({ error: 'Falló el scraping', detalle: err.message });
   }
