@@ -1,5 +1,4 @@
-import fetch from 'node-fetch';
-import { load } from 'cheerio';
+import puppeteer from 'puppeteer';
 
 export default async function handler(req, res) {
   const { url } = req.query;
@@ -9,23 +8,27 @@ export default async function handler(req, res) {
   }
 
   try {
-    const response = await fetch(url);
-    const html = await response.text();
-    const $ = load(html);
-
-    const iframes = [];
-    $('iframe').each((_, el) => {
-      const src = $(el).attr('src');
-      if (src) iframes.push(src);
+    const browser = await puppeteer.launch({
+      headless: 'new', // Usa 'new' para evitar errores en Vercel o Render
+      args: ['--no-sandbox', '--disable-setuid-sandbox']
     });
 
-    if (iframes.length === 0) {
-      return res.status(200).json({ iframe: null, mensaje: 'No se encontró ningún iframe' });
+    const page = await browser.newPage();
+    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
+
+    const iframeSrc = await page.evaluate(() => {
+      const iframe = document.querySelector('iframe');
+      return iframe ? iframe.src : null;
+    });
+
+    await browser.close();
+
+    if (!iframeSrc) {
+      return res.status(200).json({ iframe: null, mensaje: 'No se encontró ningún iframe visible con JS activo' });
     }
 
-    // Regresa el primero como antes, pero mostrando todos si lo necesitas
-    return res.status(200).json({ iframe: iframes[0], encontrados: iframes });
+    return res.status(200).json({ iframe: iframeSrc });
   } catch (err) {
-    return res.status(500).json({ error: 'Falló el scraping', detalle: err.message });
+    return res.status(500).json({ error: 'Falló Puppeteer', detalle: err.message });
   }
 }
